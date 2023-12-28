@@ -1,0 +1,23 @@
+pipeline {
+    agent any 
+    parameters {
+        choice(name: 'ENV', choices: ['Beta', 'Stage', 'Prod'], description: 'Select Environment:')
+        }
+    stages {
+        stage('Checkout'){
+            steps {
+                git branch: 'master', url: 'https://192.168.154.128:3000/admingitea/python-web-app.git'
+            }
+        }
+        stage('Build') { 
+            steps {
+                    sh '''echo $USER && docker build -t 192.168.154.128/python-webapp:1.1.5 .'''
+            }
+        }
+        stage('Push To Docker Registries') { 
+            steps {
+                    sh '''docker  push 192.168.154.128/python-webapp:1.1.5'''
+            }
+        }
+    }
+}

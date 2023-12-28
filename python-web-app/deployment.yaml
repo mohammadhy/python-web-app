@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-app-elastic
+spec:
+  selector:
+    matchLabels:
+      app: python-elastic
+  template:
+    metadata:
+      labels:
+        app: python-elastic
+    spec:
+      containers:
+      - name: python
+        image: 192.168.88.143/python-web-app-elastic
+      nodeName: worker
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-python-app-elastic
+spec:
+  type: NodePort
+  selector:
+      app: python-elastic
+  ports:
+  - port: 8000

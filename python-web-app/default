@@ -1,0 +1,14 @@
+server {
+        listen 80 default_server;
+        accescc_log /var/log/acces.log;
+        error_log /var/log/error.log;
+        server_name _;
+
+        location / {
+           try_files $uri $uri/ =404;
+           proxy_pass http://127.0.0.1:8000/;
+        }
+        location /second {
+           proxy_pass http://127.0.0.1:8000/second;
+        }
+}
