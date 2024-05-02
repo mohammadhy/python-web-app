@@ -1,6 +1,6 @@
 server {
         listen 80 default_server;
-        accescc_log /var/log/acces.log;
+        access_log /var/log/access.log;
         error_log /var/log/error.log;
         server_name _;
 

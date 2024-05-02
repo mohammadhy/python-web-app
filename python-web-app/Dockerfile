@@ -1,6 +1,6 @@
 FROM python:3.9-slim-bullseye
 RUN apt-get update && apt install -y nginx curl
-COPY default /etc/nginx/site-available/default
+COPY default /etc/nginx/sites-enabled/default
 WORKDIR /app
 COPY . .
 RUN pip install -r requirment.text

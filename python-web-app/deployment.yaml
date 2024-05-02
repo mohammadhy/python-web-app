@@ -1,28 +1,27 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: python-app-elastic
+  name: python-app-log
 spec:
   selector:
     matchLabels:
-      app: python-elastic
+      app: python-log
   template:
     metadata:
       labels:
-        app: python-elastic
+        app: python-log
     spec:
       containers:
       - name: python
-        image: 192.168.88.143/python-web-app-elastic
-      nodeName: worker
+        image: 192.168.154.128:5000/python-web-app-redis
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: service-python-app-elastic
+  name: service-python-log
 spec:
   type: NodePort
   selector:
-      app: python-elastic
+      app: python-log
   ports:
   - port: 8000
