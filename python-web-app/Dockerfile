@@ -10,4 +10,4 @@ RUN dpkg -i apm-server-7.17.0-amd64.deb
 RUN mv apm-server.yml /etc/apm-server/apm-server.yml
 RUN chmod 755 /etc/apm-server/apm-server.yml
 RUN service apm-server start
-CMD gunicorn myproject:app -c gunicorn_config.py
+CMD gunicorn myproject:app -c gunicorn_config.py --access-logfile access.log --error-logfile error.log
