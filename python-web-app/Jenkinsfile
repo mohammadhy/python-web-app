@@ -1,23 +1,45 @@
 pipeline {
-    agent any 
+    agent any
     parameters {
-        choice(name: 'ENV', choices: ['Beta', 'Stage', 'Prod'], description: 'Select Environment:')
+        choice(name: 'ENV', choices: ['beta', 'stage', 'prod'], description: 'Select Environment:')
         }
+    environment {
+      IMAGE = "${env.ENV}-${env.JOB_NAME}:${env.Build_NUMBER}"
+    }
     stages {
         stage('Checkout'){
             steps {
-                git branch: 'master', url: 'https://192.168.154.128:3000/admingitea/python-web-app.git'
+                git branch: 'master', url: 'http://192.168.154.174:30000/usergitea/python-web-app.git'
             }
         }
-        stage('Build') { 
+        stage('Build') {
             steps {
-                    sh '''echo $USER && docker build -t 192.168.154.128/python-webapp:1.1.5 .'''
+                    sh ''' echo $USER && docker build -t 192.168.154.128:5000/${IMAGE} . '''
             }
         }
-        stage('Push To Docker Registries') { 
+        stage('Push To Docker Registries') {
             steps {
-                    sh '''docker  push 192.168.154.128/python-webapp:1.1.5'''
+                    sh ''' docker  push 192.168.154.128:5000/${IMAGE} '''
             }
+        }
+        stage('Deploy') {
+          steps {
+            script {
+              if (params.ENV == 'prod') {
+              input message: "Approve deployment to Prod?", ok: "Deploy"
+              }
+            }
+            sh ''' echo "Deployed" '''
+          }
+       }
+    }
+    post{
+        always {
+            echo "Slack Notification"
+            slackSend (
+                channel: '#cicd',
+                message: "*${currentBuild.currentResult}:* \n Job ${env.JOB_NAME} \n build ${env.BUILD_NUMBER} \n"
+            )
         }
     }
 }
