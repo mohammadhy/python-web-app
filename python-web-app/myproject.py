@@ -7,7 +7,7 @@ from prometheus_flask_exporter import PrometheusMetrics
 app = Flask(__name__)
 CORS(app)
 apm = ElasticAPM(app, logging=True)
-redis = Redis(host="redis.redis-db", port=6379, password="123")
+redis = Redis(host="redis.db", port=6379, password="123")
 metrics = PrometheusMetrics(app)
 metrics.info('app_info', 'Application info', version='1.0.3')
 
