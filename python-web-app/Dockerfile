@@ -1,5 +1,5 @@
 FROM python:3.9-slim-bullseye
-RUN apt-get update && apt install -y nginx curl supervisor
+RUN apt-get update && apt install -y nginx curl supervisor pkg-config libmariadb-dev gcc
 COPY default /etc/nginx/sites-enabled/default
 WORKDIR /app
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
