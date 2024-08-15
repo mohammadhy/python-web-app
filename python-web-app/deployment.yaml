@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluentd-config
+data:
+  filebeat.yml: |
+    filebeat.inputs:
+    - type: log
+      paths:
+      - /var/log/gunicorn_*
+    output.elasticsearch:
+      hosts: ["http://elasticsearch.default.svc:9200"]
+      username: "elastic"
+      password: "asus1650"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-app-log
+spec:
+  selector:
+    matchLabels:
+      app: python-log
+  template:
+    metadata:
+      labels:
+        app: python-log
+    spec:
+      containers:
+        - name: python
+          image: 192.168.154.128:5000/python-app:0.0.1
+          ports:
+          - containerPort: 8000
+          volumeMounts:
+          - name: data
+            mountPath: /var/log
+
+        - name: filebeat
+          image: 192.168.154.128:5000/filebeat
+          env:
+          - name: ELASTICSEARCH_HOST
+            value: "http://elasticsearch.default.svc:9200"
+          - name: ELASTICSEARCH_PORT
+            value: "9200"
+          - name: ELASTICSEARCH_USERNAME
+            value: elastic
+          - name: ELASTICSEARCH_PASSWORD
+            value: "asus1650"
+          volumeMounts:
+          - name: data
+            mountPath: /var/log
+          - name: config-volume
+            mountPath: /usr/share/filebeat/filebeat.yml
+            subPath: filebeat.yml
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: data-python-app
+      - name: config-volume
+        configMap:
+          name: fluentd-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-python-log
+  labels:
+    app: python-log
+spec:
+  type: NodePort
+  selector:
+      app: python-log
+  ports:
+  - protocol: TCP
+    name: web
+    port: 80
+    targetPort: 8000

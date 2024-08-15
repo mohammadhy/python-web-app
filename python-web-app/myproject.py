@@ -17,6 +17,7 @@ bcrypt = Bcrypt(app)
 app.config['SECRET_KEY'] = 'your_secret_key'
 apm = ElasticAPM(app, logging=True)
 redis = Redis(host="redis.db", port=6379, password="123")
+<<<<<<< HEAD
 
 app.config['MYSQL_HOST'] = 'mysql-service.db'
 app.config['MYSQL_USER'] = 'root'
@@ -68,6 +69,8 @@ def login():
 
 
 
+=======
+>>>>>>> ccbbd6f6531afe288b7d30b5c6407701e7d745da
 metrics = PrometheusMetrics(app)
 metrics.info('app_info', 'Application info', version='1.0.3')
 
