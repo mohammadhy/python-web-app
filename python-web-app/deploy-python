@@ -1,0 +1,59 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Download Artifact') {
+            steps {
+                sh ''' pwd ''' 
+                copyArtifacts filter: 'artifact', projectName: 'python-web-app', selector: lastSuccessful()
+            }
+        }
+        stage('Checkout'){
+            steps {
+                sh ''' git config --global http.sslVerify false  ''' 
+                git branch: 'main', url: 'https://192.168.154.181:3000/hasan/deploy-python.git'
+            }
+        }
+
+        stage('Delete Last Values'){
+            steps{
+                sh ''' 
+                       sed -i "0,/image:/s/image:.*/image: /g" deployment.yaml &&
+                       sed -i "/namespace:/s/namespace:.*/namespace: /g" deployment.yaml  &&
+                       sed -i "/namespace:/s/namespace:.*/namespace: /g" service.yaml  &&
+                       sed -i "/namespace:/s/namespace:.*/namespace: /g" configmap.yaml && 
+                       sed -i "/namespace:/s/namespace:.*/namespace: /g" pvc.yaml &&
+                       sed -i "/namespace:/s/namespace:.*/namespace: /g" ingress.yaml
+                   '''
+            }
+        }
+        
+        
+        
+        stage('Prepare Deployment'){
+            steps{
+                sh '''  sed -i "0,/image:/s/image:.*/image: 192.168.154.128:5000\\/$(cat /var/jenkins_home/workspace/python-web-app/artifact)/g" deployment.yaml &&
+                        sed -i "/namespace:/s/namespace:.*/namespace: $(cut -f1 -d'-' /var/jenkins_home/workspace/python-web-app/artifact)/g" deployment.yaml '''
+            }
+        }
+        stage('Prepare configmap service pvc'){
+            steps{
+                sh ''' sed -i "/namespace:/s/namespace:.*/namespace: $(cut -f1 -d'-' /var/jenkins_home/workspace/python-web-app/artifact)/g" service.yaml  &&
+                       sed -i "/namespace:/s/namespace:.*/namespace: $(cut -f1 -d'-' /var/jenkins_home/workspace/python-web-app/artifact)/g" configmap.yaml && 
+                       sed -i "/namespace:/s/namespace:.*/namespace: $(cut -f1 -d'-' /var/jenkins_home/workspace/python-web-app/artifact)/g" pvc.yaml &&
+                       sed -i "/namespace:/s/namespace:.*/namespace: $(cut -f1 -d'-' /var/jenkins_home/workspace/python-web-app/artifact)/g" ingress.yaml
+                   '''
+            }
+        }
+        stage('Push To Repository'){
+            steps {
+                sh ''' git config --global http.sslVerify false  '''
+                sh ''' git add . '''
+                sh ''' git config --global user.email "hasan.yosefi158@gmail.com" &&
+                       git config --global user.name "hasan" '''
+                sh ''' git commit -m "Update Manifest" ''' 
+                sh ''' git push https://hasan:asus1650@192.168.154.181:3000/hasan/deploy-python.git '''
+            }
+        }
+    }
+}
