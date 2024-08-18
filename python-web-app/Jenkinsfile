@@ -6,22 +6,33 @@ pipeline {
     environment {
       IMAGE = "${env.ENV}-${env.JOB_NAME}:${env.Build_NUMBER}"
     }
+
     stages {
         stage('Checkout'){
             steps {
-                git branch: 'master', url: 'http://192.168.154.174:30000/usergitea/python-web-app.git'
+                sh ''' git config --global http.sslVerify false  ''' 
+                git branch: 'main', url: 'https://192.168.154.181:3000/hasan/python.git'
             }
         }
         stage('Build') {
             steps {
-                    sh ''' echo $USER && docker build -t 192.168.154.128:5000/${IMAGE} . '''
+                    sh ''' echo $USER && docker build  -t   192.168.154.128:5000/${IMAGE} . '''
             }
         }
         stage('Push To Docker Registries') {
             steps {
                     sh ''' docker  push 192.168.154.128:5000/${IMAGE} '''
+                    sh ''' echo $IMAGE > artifact ''' 
             }
         }
+
+        
+        stage('Create Artifact'){
+            steps {
+                archiveArtifacts artifacts: 'artifact', allowEmptyArchive: true
+            }
+        }
+        
         stage('Deploy') {
           steps {
             script {
