@@ -4,6 +4,3 @@ gunicorn==20.0.4
 elastic-apm
 Redis
 prometheus_flask_exporter
-Flask-MySQLdb
-flask_wtf
-flask_bcrypt
