@@ -11,4 +11,10 @@ server {
         location /second {
            proxy_pass http://127.0.0.1:8000/second;
         }
+        location /redis {
+           proxy_pass http://127.0.0.1:8000/redis;
+        }
+        location /health {
+           proxy_pass http://127.0.0.1:8000/health;
+        }
 }
