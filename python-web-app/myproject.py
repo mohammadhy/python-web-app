@@ -1,7 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_cors import CORS
-from wtforms import StringField, PasswordField, SubmitField
-from wtforms.validators import InputRequired, Length, EqualTo
 from redis import Redis, ConnectionError
 from elasticapm.contrib.flask import ElasticAPM
 from prometheus_flask_exporter import PrometheusMetrics
@@ -23,15 +21,10 @@ app.config['ELASTIC_APM'] = {
 }
 @app.route("/")
 def main():
-    if 'username' in session:
-        app.logger.info("Log From main function")
-        return f"<h1 style='color:blue'>Welcome {session['username']}!</h1>"
-    else:
-        return redirect(url_for('login'))
+    return "<h1 style='color:red'>Home Lab Hy</h1>"
 @app.route("/second")
 def second():
-    app.logger.error("Log From second function")
-    return "<h1 style='color:red'>second</h1>"
+    return "<h1 style='color:red'>second Page </h1>"
 @app.route("/redis")
 def write():
     redis.set("KeyName", "ValueName")
@@ -43,11 +36,6 @@ def health_check():
     else:
         return 'Service Unavailable', 500
 
-app.route('/metrics')
-def metrics():
-    return { 
-            'status' '200'
-            }
 
 def all_required_services_are_running():
     try:
