@@ -17,7 +17,7 @@ spec:
         - name: python
           image: $IMAGE
           ports:
-          - containerPort: 8000
+          - containerPort: 80
           volumeMounts:
           - name: data
             mountPath: /var/log
