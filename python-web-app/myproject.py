@@ -6,7 +6,6 @@ from prometheus_flask_exporter import PrometheusMetrics
 
 app = Flask(__name__)
 CORS(app)
-bcrypt = Bcrypt(app)
 app.config['SECRET_KEY'] = 'your_secret_key'
 apm = ElasticAPM(app, logging=True)
 redis = Redis(host="redis.db", port=6379, password="123")
