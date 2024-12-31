@@ -1,56 +1,171 @@
 pipeline {
     agent any
-    parameters {
-        choice(name: 'ENV', choices: ['beta', 'stage', 'prod'], description: 'Select Environment:')
-        }
     environment {
-      IMAGE = "${env.ENV}-${env.JOB_NAME}:${env.Build_NUMBER}"
+      REGISTERY ='192.168.1.105:5000'
+      IMAGE = "${env.JOB_NAME}"
+      PRODUCT_ID = '1'
+      DOJO_URL = '192.168.1.104:8080'
+      ENGAGEMENT_ID = '1'
+      PRODUCT_NAME = 'python-web-app'
+      DOJO_KEY = credentials('defectdojo')
+      GITLAB_USR_PAS = credentials('gitlab-username-password')
+      SONAR_SEGAM = credentials('sonarqube-segam')
     }
-
+    
     stages {
-        stage('Checkout'){
+        stage('checkout') {
             steps {
-                sh ''' git config --global http.sslVerify false  ''' 
-                git branch: 'main', url: 'https://192.168.154.181:3000/hasan/python.git'
+              git branch: 'main', credentialsId: 'gitlab-username-password' , url: 'http://192.168.1.106/lab/segam.git'
+                }
+            }
+        stage('Get Short SHA'){
+          steps {
+            script {
+              env.CI_COMMIT_SHORT_SHA=sh(
+                script:'git rev-parse --short HEAD',
+                returnStdout: true).trim()
+            }
+          }
+        }
+        
+        stage('check security') {
+          parallel {
+            
+            stage('git secret'){
+              steps {
+                sh ''' docker run --platform linux/amd64 --rm -i -v "$PWD:/repo" 192.168.42.3:5000/trufflehog:latest git --json --since-commit HEAD --only-verified --fail file:///repo > trufflehog.json'''
+              }
+             
+            }
+            
+            stage('git leaks'){
+              steps {
+                sh ''' docker run -v "$PWD:/repo" 192.168.42.3:5000/gitleaks detect --source="/repo" --report-format="json" --report-path="/repo/gitleaks.json" -v '''
+              }
+            }
+             
+          }
+        
+        }
+        stage('Upload Scan Gitleaks') {
+            steps {
+                script {
+                    sh ''' docker run -v "$PWD:/repo"  192.168.42.3:5000/defect-dojo:0.0.1 -url $DOJO_URL -api $DOJO_KEY -product-id $PRODUCT_ID -engagement-id $ENGAGEMENT_ID -scan-type "Gitleaks Scan" -engagement_name $IMAGE -file-path /repo/gitleaks.json -product-name $PRODUCT_NAME '''
+                }
+            }
+        }
+        stage('Upload Scan Trufflehog') {
+            steps {
+                script {
+                    sh ''' docker run -v "$PWD:/repo"  192.168.42.3:5000/defect-dojo:0.0.1 -url $DOJO_URL -api $DOJO_KEY -product-id $PRODUCT_ID -engagement-id $ENGAGEMENT_ID -scan-type "Trufflehog Scan" -engagement_name $IMAGE -file-path /repo/trufflehog.json -product-name $PRODUCT_NAME '''
+                }
+            }
+        }
+        
+    
+        stage('Sonarqube'){ 
+            steps{ 
+                script{
+                    sh ''' docker run --rm -v $(pwd):/usr/src/mymaven  -w /usr/src/mymaven maven:3.8.3-openjdk-17 mvn sonar:sonar -Dsonar.projectKey=python-webapp -Dsonar.host.url=http://192.168.42.3:9100 -Dsonar.login=$SONAR_SEGAM ''' 
+                }
+            }
+        }
+        
+        stage('OWASP Dependency-Check Vulnerabilities-SCA') {
+            steps{
+                //scan Dependency Lib on Project (CI Security)
+                dependencyCheck additionalArguments: ''' 
+                            --enableExperimental
+                           --noupdate
+                           -o './'
+                           -s './'
+                           -f 'ALL' 
+                          --prettyPrint''', odcInstallation: 'OWASP-Dependency-Check'
+                
+                dependencyCheckPublisher pattern: 'dependency-check-report.xml'
+            }
+        }
+        stage('Upload Scan dependency-check-') {
+            steps {
+                script {
+                    sh ''' docker run -v "$PWD:/repo"  192.168.42.3:5000/defect-dojo:0.0.1 -url $DOJO_URL -api $DOJO_KEY -product-id $PRODUCT_ID -engagement-id $ENGAGEMENT_ID -scan-type "Dependency Check Scan" -engagement_name $IMAGE -file-path /repo/dependency-check-report.xml -product-name $PRODUCT_NAME '''
+                }
             }
         }
         stage('Build') {
             steps {
-                    sh ''' echo $USER && docker build  -t   192.168.154.128:5000/${IMAGE} . '''
+              sh ''' echo $CI_COMMIT_SHORT_SHA '''
+              sh ''' DOCKER_BUILDKIT=1 docker build -t $REGISTERY/$IMAGE:v1 . '''
+              sh ''' DOCKER_BUILDKIT=1 docker build -t $REGISTERY/$IMAGE:$CI_COMMIT_SHORT_SHA . '''
+            }
+        }
+        stage('Trivy'){ 
+            steps{
+                sh ''' docker run --rm -v /var/lib/jenkins/workspace/segam-dashboard:/app -v /var/run/docker.sock:/var/run/docker.sock 192.168.42.3:5000/aquasec/trivy:0.58.0 registry login --username admin --password 'pania255' 192.168.42.3:5000 '''
+                sh ''' docker run --rm -v $PWD:/app -v /var/run/docker.sock:/var/run/docker.sock 192.168.42.3:5000/aquasec/trivy:0.58.0 image --db-repository $REGISTERY/aquasecurity/trivy-db:2 --java-db-repository $REGISTERY/aquasecurity/trivy-java-db:1 -f json -o /app/trivy.json  $REGISTERY/$IMAGE:$CI_COMMIT_SHORT_SHA'''
+            }
+        }
+        
+        stage('Upload Scan Trivy') {
+            steps {
+                script {
+                    sh ''' docker run -v "$PWD:/repo"  192.168.42.3:5000/defect-dojo:0.0.1 -url $DOJO_URL -api $DOJO_KEY -product-id $PRODUCT_ID -engagement-id $ENGAGEMENT_ID -scan-type "Trivy Scan" -engagement_name $IMAGE -file-path /repo/trivy.json -product-name $PRODUCT_NAME '''
+                }
             }
         }
         stage('Push To Docker Registries') {
             steps {
-                    sh ''' docker  push 192.168.154.128:5000/${IMAGE} '''
-                    sh ''' echo $IMAGE > artifact ''' 
-            }
-        }
-
-        
-        stage('Create Artifact'){
-            steps {
-                archiveArtifacts artifacts: 'artifact', allowEmptyArchive: true
+              sh ''' docker push $REGISTERY/$IMAGE:v1 '''
+              sh ''' docker push $REGISTERY/$IMAGE:$CI_COMMIT_SHORT_SHA '''
             }
         }
         
         stage('Deploy') {
+            steps {
+               sh ''' kubectl set image deployment/$IMAGE $IMAGE=$REGISTERY/$IMAGE:$CI_COMMIT_SHORT_SHA  '''
+            }
+        }
+        
+        stage('Extract Ip'){
           steps {
             script {
-              if (params.ENV == 'prod') {
-              input message: "Approve deployment to Prod?", ok: "Deploy"
+              env.TARGET_URL=sh(
+                script:'kubectl --context segamuser-context get svc $IMAGE -n segam -o json | jq -r ".status[].ingress[0].ip"',returnStdout: true)
+            }
+          }
+        }
+/*
+        stage('Dast Zap Analaysis') {
+          parallel {
+              
+            stage('Zap Import Context'){
+              steps {
+                sh ''' zap-cli --zap-url http://192.168.42.14 --port 8080 --api-key fkeaip9dqcg9229tpm9834vsod context import "Default Context" '''
               }
             }
-            sh ''' echo "Deployed" '''
+            stage('Zap Open-url'){
+              steps {
+                sh ''' zap-cli --zap-url http://192.168.42.14 --port 8080 --api-key fkeaip9dqcg9229tpm9834vsod open-url http://$TARGET_URL '''
+              }
+            }
+            
+            
+            stage('Zap Spider Scan Without Username'){
+              steps {
+                sh ''' zap-cli --zap-url http://192.168.42.14 --port 8080 --api-key fkeaip9dqcg9229tpm9834vsod spider -c "Default Context" http://$TARGET_URL '''
+              }
+            }
+            
+            
+            
+            stage('Zap Active Scan Without Username'){
+              steps {
+                sh ''' zap-cli --zap-url http://192.168.42.14 --port 8080 --api-key fkeaip9dqcg9229tpm9834vsod active-scan --recursive -c "Default Context" http://$TARGET_URL '''
+              }
+            }
           }
-       }
-    }
-    post{
-        always {
-            echo "Slack Notification"
-            slackSend (
-                channel: '#cicd',
-                message: "*${currentBuild.currentResult}:* \n Job ${env.JOB_NAME} \n build ${env.BUILD_NUMBER} \n"
-            )
+        }
+*/
         }
     }
 }
