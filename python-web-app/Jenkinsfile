@@ -9,7 +9,7 @@ pipeline {
       PRODUCT_NAME = 'python-web-app'
       DOJO_KEY = credentials('defectdojo')
       GITLAB_USR_PAS = credentials('gitlab-username-password')
-      SONAR_SEGAM = credentials('sonarqube-segam')
+      SONAR = credentials('sonarqube')
     }
     
     stages {
@@ -66,7 +66,7 @@ pipeline {
         stage('Sonarqube'){ 
             steps{ 
                 script{
-                    sh ''' docker run --rm -v $(pwd):/usr/src/mymaven  -w /usr/src/mymaven maven:3.8.3-openjdk-17 mvn sonar:sonar -Dsonar.projectKey=python-webapp -Dsonar.host.url=http://192.168.42.3:9100 -Dsonar.login=$SONAR_SEGAM ''' 
+                    sh ''' docker run --rm -v $(pwd):/usr/src/mymaven  -w /usr/src/mymaven maven:3.8.3-openjdk-17 mvn sonar:sonar -Dsonar.projectKey=python-webapp -Dsonar.host.url=http://192.168.42.3:9100 -Dsonar.login=$SONAR ''' 
                 }
             }
         }
